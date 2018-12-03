@@ -1,3 +1,8 @@
+#Data Files
+data/queries.dev.tsv
+data/queries.eval.tsv
+data/queries.train.tsv
+data/collection.tsv
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
