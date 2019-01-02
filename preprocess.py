@@ -18,7 +18,8 @@ def read_files():
     print_message('Converting MSMARCO files to corpus and building vocab')
     word_count = {}
     word_count['<UNK>'] = 1
-    files = ['data/collection.tsv','data/queries.dev.tsv','data/queries.eval.tsv','data/queries.train.tsv']
+    files = ['data/queries.dev.tsv','data/queries.eval.tsv', 'data/queries.train.tsv']
+    #files = ['data/collection.tsv','data/queries.dev.tsv','data/queries.eval.tsv','data/queries.train.tsv'] #warning takes much longer to run
     corpus_length = 0
     with codecs.open('data/corpus.txt','w') as w:
         for a_file in files:
@@ -31,13 +32,13 @@ def read_files():
                         word_count[word] += 1
                         corpus_length += 1
                         w.write(word + ' ')
-    print_message('Done reading vocab.\nThere are {} unique words and the corpus is {} words long\n'.format(len(word_count), corpus_length))
+    print_message('Done reading vocab.\nThere are {} unique words and the corpus is {} words long'.format(len(word_count), corpus_length))
     return word_count
 def create_train(word_count):
     idx2word = ['<UNK>'] + sorted(word_count, key=word_count.get, reverse=True)[:MAX_VOCAB - 1]
     word2idx = {idx2word[idx]: idx for idx, _ in enumerate(idx2word)}
     vocab = set([word for word in word2idx])
-    pickle.dump(word_count, open('data/word_count.txt', 'wb'))
+    pickle.dump(word_count, open('data/wc.txt', 'wb'))
     pickle.dump(vocab, open('data/vocab.txt', 'wb'))
     pickle.dump(idx2word, open('data/idx2word.txt', 'wb'))
     pickle.dump(word2idx, open('data/word2idx.txt', 'wb'))
