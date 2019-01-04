@@ -25,6 +25,7 @@ class Bundler(torch.nn.Module):
         raise NotImplementedError
     def forward_o(self, data):
         raise NotImplementedError
+        
 class Word2Vec(Bundler):
     def __init__(self, padding_idx=0):
         super(Word2Vec, self).__init__()
@@ -46,6 +47,7 @@ class Word2Vec(Bundler):
         v = LT(data)
         v = v.cuda() if self.ovectors.weight.is_cuda else v
         return self.ovectors(v)
+
 class SGNS(torch.nn.Module):
     def __init__(self, embedding):
         super(SGNS, self).__init__()
@@ -66,6 +68,7 @@ class SGNS(torch.nn.Module):
         oloss = torch.bmm(ovectors, ivectors).squeeze().sigmoid().log().mean(1)
         nloss = torch.bmm(nvectors, ivectors).squeeze().sigmoid().log().view(-1, context_size, self.n_negs).sum(2).mean(1)
         return -(oloss + nloss).mean()
+
 class PermutedSubsampledCorpus(Dataset):
     def __init__(self, datapath, ws=None):
         data = pickle.load(open(datapath, 'rb'))
@@ -81,6 +84,7 @@ class PermutedSubsampledCorpus(Dataset):
     def __getitem__(self, idx):
         iword, owords = self.data[idx]
         return iword, np.array(owords)
+
 def main():
     idx2word = pickle.load(open('data/idx2word.txt', 'rb'))
     wc = pickle.load(open('data/wc.txt', 'rb'))
@@ -103,7 +107,7 @@ def main():
             loss.backward()
             optim.step()
             pbar.set_postfix(loss=loss.item())
-        torch.save(sgns.state_dict(), 'data/model.pt')
+        torch.save(sgns, 'data/model.pt')
         torch.save(optim.state_dict(), 'data/model.optim.pt')
     idx2vec = model.ivectors.weight.data.cpu().numpy()
     pickle.dump(idx2vec, open('data/idx2vec.txt', 'wb'))
