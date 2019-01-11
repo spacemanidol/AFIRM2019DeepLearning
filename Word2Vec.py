@@ -97,12 +97,12 @@ def create_sentence(vocab,sentence):
     return output[:-1]
 def annoy6b():
     i = 0
-    w2idx={}
+    word2idx={}
     idx2vec = []
     with open('glove.6B.50d.txt','rb') as f:
         for l in f:
             l = l.strip().split()
-            w2idx[i] = l[0]
+            word2idx[i] = l[0]
             idx2vec.append(np.array(l[1:],dtype=float))
             i += 1
     idx2vec = np.array(idx2vec)
@@ -111,12 +111,17 @@ def annoy6b():
         a.add_item(i,idx2vec[i])
     a.build(1000)
     a.save('glove6b50d.ann')
+    analogy = idx2vec[word2idx['king']]-idx2vec[word2idx['man']]+idx2vec[word2idx['woman']]
+    neighbors = a.get_nns_by_vector(analogy,5,include_distances=True)
+    for i in range(1,5):
+        print_message("Closest item to 'king-man+woman' is {} with {} distance".format(idx2word[neighbors[0][i]], neighbors[1][i]))
+    
 def annoy():
     print_message("Starting Annoy")
     word2idx = pickle.load(open('data/word2idx.txt', 'rb'))
     idx2word = pickle.load(open('data/idx2word.txt', 'rb'))
     idx2vec = pickle.load(open('data/idx2vec.txt', 'rb'))
-    trees = AnnoyIndex(EMBEDDING_DIMENSION)
+    t = AnnoyIndex(EMBEDDING_DIMENSION)
     for i in range(0,VOCAB_SIZE-1):
         t.add_item(i,idx2vec[i])
     t.build(1000000)
@@ -135,7 +140,7 @@ def annoy():
     for word in sentence.split():
         if word in word2idx:
             x += idx2vec[word2idx[word]]
-    neighbors = get_nns_by_vector(x,5, include_distances=True)
+    neighbors = t.get_nns_by_vector(x,5, include_distances=True)
     for i in range(1,5):
         print_message("Closest item to 'the fall of the roman empire' is {} with {} distance".format(idx2word[neighbors[0][i]], neighbors[1][i]))
     analogy = idx2vec[word2idx['king']]-idx2vec[word2idx['man']]+idx2vec[word2idx['woman']]
