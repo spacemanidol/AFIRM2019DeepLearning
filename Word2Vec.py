@@ -98,24 +98,33 @@ def create_sentence(vocab,sentence):
 def annoy6b():
     i = 0
     word2idx={}
+    idx2word = {}
     idx2vec = []
     with open('glove.6B.50d.txt','rb') as f:
         for l in f:
             l = l.strip().split()
-            word2idx[i] = l[0]
+            word2idx[l[0]] = i
+            idx2word[i] = l[0]
             idx2vec.append(np.array(l[1:],dtype=float))
             i += 1
     idx2vec = np.array(idx2vec)
-    a = AnnoyIndex(50)
+    t = AnnoyIndex(50)
     for i in range(0,400000):
-        a.add_item(i,idx2vec[i])
-    a.build(1000)
-    a.save('glove6b50d.ann')
-    analogy = idx2vec[word2idx['king']]-idx2vec[word2idx['man']]+idx2vec[word2idx['woman']]
-    neighbors = a.get_nns_by_vector(analogy,5,include_distances=True)
+        t.add_item(i,idx2vec[i])
+    t.build(100)
+    t.save('glove6b50d.ann')
+    analogy = idx2vec[word2idx[b'king']]-idx2vec[word2idx[b'man']]+idx2vec[word2idx[b'woman']]
+    neighbors = t.get_nns_by_vector(analogy,5,include_distances=True)
     for i in range(1,5):
         print_message("Closest item to 'king-man+woman' is {} with {} distance".format(idx2word[neighbors[0][i]], neighbors[1][i]))
-    
+    search_index = 5450
+    #search_index =  136 #War
+    neighbors = t.get_nns_by_item(search_index,5, include_distances=True)
+    for i in range(1,5):
+        print_message("Closest item to {} is {} with {} distance".format(idx2word[search_index], idx2word[neighbors[0][i]], neighbors[1][i] ))
+    t.get_distance(search_index,word2idx[b'cat'])
+    t.get_distance(search_index,word2idx[b'exemplification'])
+
 def annoy():
     print_message("Starting Annoy")
     word2idx = pickle.load(open('data/word2idx.txt', 'rb'))
@@ -124,7 +133,7 @@ def annoy():
     t = AnnoyIndex(EMBEDDING_DIMENSION)
     for i in range(0,VOCAB_SIZE-1):
         t.add_item(i,idx2vec[i])
-    t.build(1000000)
+    t.build(100)
     t.save('MSMARCO.ann')
     search_index = 1370 #Cat
     #search_index =  465 #War
