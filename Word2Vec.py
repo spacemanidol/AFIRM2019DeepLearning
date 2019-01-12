@@ -18,11 +18,13 @@ from sklearn.manifold import TSNE
 from matplotlib import pyplot
 
 DEVICE = torch.device("cuda:0")
-#FILES = ['data/queries.dev.tsv','data/queries.eval.tsv', 'data/queries.train.tsv']
-FILES = ['data/collection.tsv','data/queries.dev.tsv','data/queries.eval.tsv','data/queries.train.tsv']
 #DEVICE = torch.device("cpu")
-EMBEDDING_DIMENSION = 300
-EPOCHS = 100
+#FILES = ['data/queries.dev.tsv','data/queries.eval.tsv', 'data/queries.train.tsv']
+#FILES = ['data/collection.tsv']
+FILES = ['data/queries.dev.tsv','data/queries.eval.tsv','data/queries.train.tsv','data/collection.tsv']
+#DEVICE = torch.device("cpu")
+EMBEDDING_DIMENSION = 50
+EPOCHS = 300
 MB_SIZE = 50000
 VOCAB_SIZE = 100000
 learning_rate = 1e-3
@@ -86,77 +88,6 @@ def skipgram(sentence, word2idx):
                         idx_pairs.append((center_idx, word2idx[sentence[i-j]]))
     return idx_pairs
 
-def create_sentence(vocab,sentence):
-    output = ''
-    for word in sentence.split():
-        if word in vocab:
-            output += word
-        else:
-            output += '<UNK>'
-        output += ' '
-    return output[:-1]
-def annoy6b():
-    i = 0
-    word2idx={}
-    idx2word = {}
-    idx2vec = []
-    with open('glove.6B.50d.txt','rb') as f:
-        for l in f:
-            l = l.strip().split()
-            word2idx[l[0]] = i
-            idx2word[i] = l[0]
-            idx2vec.append(np.array(l[1:],dtype=float))
-            i += 1
-    idx2vec = np.array(idx2vec)
-    t = AnnoyIndex(50)
-    for i in range(0,400000):
-        t.add_item(i,idx2vec[i])
-    t.build(100)
-    t.save('glove6b50d.ann')
-    analogy = idx2vec[word2idx[b'king']]-idx2vec[word2idx[b'man']]+idx2vec[word2idx[b'woman']]
-    neighbors = t.get_nns_by_vector(analogy,5,include_distances=True)
-    for i in range(1,5):
-        print_message("Closest item to 'king-man+woman' is {} with {} distance".format(idx2word[neighbors[0][i]], neighbors[1][i]))
-    search_index = 5450
-    #search_index =  136 #War
-    neighbors = t.get_nns_by_item(search_index,5, include_distances=True)
-    for i in range(1,5):
-        print_message("Closest item to {} is {} with {} distance".format(idx2word[search_index], idx2word[neighbors[0][i]], neighbors[1][i] ))
-    t.get_distance(search_index,word2idx[b'cat'])
-    t.get_distance(search_index,word2idx[b'exemplification'])
-
-def annoy():
-    print_message("Starting Annoy")
-    word2idx = pickle.load(open('data/word2idx.txt', 'rb'))
-    idx2word = pickle.load(open('data/idx2word.txt', 'rb'))
-    idx2vec = pickle.load(open('data/idx2vec.txt', 'rb'))
-    t = AnnoyIndex(EMBEDDING_DIMENSION)
-    for i in range(0,VOCAB_SIZE-1):
-        t.add_item(i,idx2vec[i])
-    t.build(100)
-    t.save('MSMARCO.ann')
-    search_index = 1370 #Cat
-    #search_index =  465 #War
-    neighbors = t.get_nns_by_item(search_index,5, include_distances=True)
-    for i in range(1,5):
-        print_message("Closest item to {} is {} with {} distance".format(idx2word[search_index], idx2word[neighbors[0][i]], neighbors[1][i] ))
-    t.get_distance(search_index,word2idx['kitty'])
-    t.get_distance(search_index,word2idx['exemplification'])
-    #t.load('MSMARCO.ann')
-    #print(t.get_nns_by_item(0, 100))
-    sentence = 'the fall of roman empire'
-    x = np.zeros(300)
-    for word in sentence.split():
-        if word in word2idx:
-            x += idx2vec[word2idx[word]]
-    neighbors = t.get_nns_by_vector(x,5, include_distances=True)
-    for i in range(1,5):
-        print_message("Closest item to 'the fall of the roman empire' is {} with {} distance".format(idx2word[neighbors[0][i]], neighbors[1][i]))
-    analogy = idx2vec[word2idx['king']]-idx2vec[word2idx['man']]+idx2vec[word2idx['woman']]
-    t.get_nns_by_vector(analogy,5,include_distances=True)
-    for i in range(1,5):
-        print_message("Closest item to 'king-man+woman' is {} with {} distance".format(idx2word[neighbors[0][i]], neighbors[1][i]))
-    
 def make_pairs(word_count):
     idx2word = sorted(word_count, key=word_count.get, reverse=True)[:VOCAB_SIZE]
     word2idx = {idx2word[idx]: idx for idx, _ in enumerate(idx2word)}
@@ -167,11 +98,15 @@ def make_pairs(word_count):
     pickle.dump(word2idx, open('data/word2idx.txt', 'wb'))
     print_message("Creating Train file")
     pairs = []
+    count = 0
     with open('data/corpus.txt','w', encoding='utf-8') as corpus:
         for a_file in FILES:
             print_message("Loading file {}".format(a_file))
             with codecs.open(a_file,'r', encoding='utf-8') as f:
                 for l in f:
+                    if count % 100000 == 0:
+                        print_message("Processed {} lines so far".format(count))
+                    count += 1
                     l = l.strip().split('\t')
                     if len(l) > 1:
                         l = l[1]
@@ -181,10 +116,120 @@ def make_pairs(word_count):
                     corpus.write(cleaned_sentence+ '\n')
                     pairs += skipgram(cleaned_sentence.split(),word2idx)
     pickle.dump(pairs, open('data/pairs.txt','wb'))
-    print_message('Done Processing')
+    print_message('Done Processing') 
 
-def plot():
-    print_message("Modeling in TSNE begining")
+def create_sentence(vocab,sentence):
+    output = ''
+    for word in sentence.split():
+        if word in vocab:
+            output += word
+        else:
+            output += '<UNK>'
+        output += ' '
+    return output[:-1]
+
+def annoyGlove():
+    print_message("Starting Annoy Glove")
+    i = 0
+    word2idx={}
+    idx2word = {}
+    idx2vec = []
+    with open('data/glove.6B.50d.txt','rb') as f:
+        for l in f:
+            l = l.strip().split()
+            word2idx[l[0]] = i
+            idx2word[i] = l[0]
+            idx2vec.append(np.array(l[1:],dtype=float))
+            i += 1
+    idx2vec = np.array(idx2vec)
+    t = AnnoyIndex(EMBEDDING_DIMENSION)
+    for i in range(0,400000):
+        t.add_item(i,idx2vec[i])
+    t.build(100)
+    t.save('data/glove6b50d.ann')
+    x = np.zeros(EMBEDDING_DIMENSION)
+    x = idx2vec[word2idx[b'the']] + idx2vec[word2idx[b'fall']] + idx2vec[word2idx[b'of']] + idx2vec[word2idx[b'the']] + idx2vec[word2idx[b'roman']] + + idx2vec[word2idx[b'empire']]
+    neighbors = t.get_nns_by_vector(x,5, include_distances=True)
+    for i in range(1,5):
+        print_message("Closest item to 'the fall of the roman empire' is {} with {} distance".format(idx2word[neighbors[0][i]], neighbors[1][i]))
+    analogy = idx2vec[word2idx[b'king']]-idx2vec[word2idx[b'man']]+idx2vec[word2idx[b'woman']]
+    neighbors = t.get_nns_by_vector(analogy,5,include_distances=True)
+    for i in range(1,5):
+        print_message("Closest item to 'king-man+woman' is {} with {} distance".format(idx2word[neighbors[0][i]], neighbors[1][i]))
+    search_index = word2idx[b'cat']
+    neighbors = t.get_nns_by_item(search_index,5, include_distances=True)
+    for i in range(1,5):
+        print_message("Closest item to {} is {} with {} distance".format(idx2word[search_index], idx2word[neighbors[0][i]], neighbors[1][i] ))
+    search_index = word2idx[b'war']
+    neighbors = t.get_nns_by_item(search_index,5, include_distances=True)
+    for i in range(1,5):
+        print_message("Closest item to {} is {} with {} distance".format(idx2word[search_index], idx2word[neighbors[0][i]], neighbors[1][i] ))
+    print_message("war is {} far away from cat".format(t.get_distance(search_index,word2idx[b'cat'])))
+    print_message("war is {} far away from exemplification".format(t.get_distance(search_index,word2idx[b'exemplification'])))
+    print_message("war is {} far away from battle".format(t.get_distance(search_index,word2idx[b'battle'])))
+
+def annoyMSMARCO():
+    print_message("Starting Annoy MSMARCO")
+    word2idx = pickle.load(open('data/word2idx.txt', 'rb'))
+    idx2word = pickle.load(open('data/idx2word.txt', 'rb'))
+    idx2vec = pickle.load(open('data/idx2vec.txt', 'rb'))
+    t = AnnoyIndex(EMBEDDING_DIMENSION)
+    for i in range(0,VOCAB_SIZE-1):
+        t.add_item(i,idx2vec[i])
+    t.build(100)
+    #t.save('MSMARCO.ann')
+    #t.load('MSMARCO.ann')
+    search_index = word2idx['cat']
+    neighbors = t.get_nns_by_item(search_index,5, include_distances=True)
+    for i in range(1,5):
+        print_message("Closest item to {} is {} with {} distance".format(idx2word[search_index], idx2word[neighbors[0][i]], neighbors[1][i] ))
+    search_index =  word2idx['war']
+    neighbors = t.get_nns_by_item(search_index,5, include_distances=True)
+    for i in range(1,5):
+        print_message("Closest item to {} is {} with {} distance".format(idx2word[search_index], idx2word[neighbors[0][i]], neighbors[1][i] ))
+    print_message("war is {} far away from cat".format(t.get_distance(search_index,word2idx['cat'])))
+    print_message("war is {} far away from exemplification".format(t.get_distance(search_index,word2idx['exemplification'])))
+    print_message("war is {} far away from battle".format(t.get_distance(search_index,word2idx['battle'])))
+    sentence = 'the fall of roman empire'
+    x = np.zeros(EMBEDDING_DIMENSION)
+    for word in sentence.split():
+        if word in word2idx:
+            x += idx2vec[word2idx[word]]
+    neighbors = t.get_nns_by_vector(x,5, include_distances=True)
+    for i in range(1,5):
+        print_message("Closest item to 'the fall of the roman empire' is {} with {} distance".format(idx2word[neighbors[0][i]], neighbors[1][i]))
+    analogy = idx2vec[word2idx['king']]-idx2vec[word2idx['man']]+idx2vec[word2idx['woman']]
+    t.get_nns_by_vector(analogy,5,include_distances=True)
+    for i in range(1,5):
+        print_message("Closest item to 'king-man+woman' is {} with {} distance".format(idx2word[neighbors[0][i]], neighbors[1][i]))
+
+def plotGlove():
+    print_message("Modeling in TSNE GLOVE")
+    word2idx={}
+    idx2word = {}
+    idx2vec = []
+    i = 0
+    with open('data/glove.6B.50d.txt','rb') as f:
+        for l in f:
+            l = l.strip().split()
+            word2idx[l[0]] = i
+            idx2word[i] = l[0]
+            idx2vec.append(np.array(l[1:],dtype=float))
+            i += 1
+    idx2vec = np.array(idx2vec)
+    model = TSNE(n_components=2, perplexity=30, init='pca', method='exact', n_iter=5000)
+    X = idx2vec[:1000]
+    X = model.fit_transform(X)
+    pyplot.figure(figsize=(50,50))
+    for i in range(len(X)):
+        pyplot.text(X[i, 0], X[i, 1], idx2word[i], bbox=dict(facecolor='blue', alpha=0.1))
+    pyplot.xlim((np.min(X[:, 0]), np.max(X[:, 0])))
+    pyplot.ylim((np.min(X[:, 1]), np.max(X[:, 1])))
+    pyplot.savefig('TSNEGlove.png')
+    print_message("Image Saved")
+
+def plotMSMARCO():
+    print_message("Modeling in TSNE MSMARCO")
     wc = pickle.load(open('data/wc.txt', 'rb'))
     word2idx = pickle.load(open('data/word2idx.txt', 'rb'))
     idx2vec = pickle.load(open('data/idx2vec.txt', 'rb'))
@@ -192,12 +237,12 @@ def plot():
     model = TSNE(n_components=2, perplexity=30, init='pca', method='exact', n_iter=5000)
     X = [idx2vec[word2idx[word]] for word in words]
     X = model.fit_transform(X)
-    pyplot.figure(figsize=(18, 18))
+    pyplot.figure(figsize=(50,50))
     for i in range(len(X)):
         pyplot.text(X[i, 0], X[i, 1], words[i], bbox=dict(facecolor='blue', alpha=0.1))
     pyplot.xlim((np.min(X[:, 0]), np.max(X[:, 0])))
     pyplot.ylim((np.min(X[:, 1]), np.max(X[:, 1])))
-    pyplot.savefig('TSNE.png')
+    pyplot.savefig('TSNEMSMARCO.png')
     print_message("Image Saved")
 
 def train():
@@ -208,7 +253,6 @@ def train():
     for center,context in dataloader:
         if epoch > EPOCHS:
             break
-        epoch += 1
         total_loss = 0
         for i in tqdm(range(0,MB_SIZE)):
             x = Variable(get_input_layer(center[i])).float().to(DEVICE)
@@ -232,6 +276,10 @@ def train():
     print_message("Word2Vec Finished Training")
 
 if __name__ == '__main__':
-    make_pairs(generate_vocabulary())
+    word_count = generate_vocabulary()
+    make_pairs(word_count)
     train()
-    plot()
+    #plotGlove()
+    #plotMSMARCO()
+    #annoyGlove()
+    #annoyMSMARCO()
