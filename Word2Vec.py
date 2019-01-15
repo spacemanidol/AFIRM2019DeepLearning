@@ -17,17 +17,16 @@ from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 from matplotlib import pyplot
 
-DEVICE = torch.device("cuda:0")
-#DEVICE = torch.device("cpu")
-#FILES = ['data/queries.dev.tsv','data/queries.eval.tsv', 'data/queries.train.tsv']
+#DEVICE = torch.device("cuda:0")
+FILES = ['data/queries.dev.tsv']
 #FILES = ['data/collection.tsv']
-FILES = ['data/queries.dev.tsv','data/queries.eval.tsv','data/queries.train.tsv','data/collection.tsv']
-#DEVICE = torch.device("cpu")
+#FILES = ['data/queries.dev.tsv','data/queries.eval.tsv','data/queries.train.tsv','data/collection.tsv']
+DEVICE = torch.device("cpu")
 EMBEDDING_DIMENSION = 50
-EPOCHS = 300
-MB_SIZE = 50000
+EPOCHS = 2
+MB_SIZE = 5000
 VOCAB_SIZE = 100000
-learning_rate = 1e-3
+learning_rate = 1e-2
 WINDOW = 5
 
 regex_drop_char = re.compile('[^a-z0-9\s]+')
@@ -73,6 +72,7 @@ def generate_vocabulary():
     return word_count
 
 def skipgram(sentence, word2idx):
+    #create skipgram pairs given a sentence and a desired vocab
     idx_pairs = []
     sentence_length = len(sentence)
     for i in range(0,sentence_length):
@@ -89,8 +89,9 @@ def skipgram(sentence, word2idx):
     return idx_pairs
 
 def make_pairs(word_count):
+    #Given a word fequency dict we take the most common in our Vocab size and then go ahead and generate all possible skipgrams(center word, context word in window +-)
     idx2word = sorted(word_count, key=word_count.get, reverse=True)[:VOCAB_SIZE]
-    word2idx = {idx2word[idx]: idx for idx, _ in enumerate(idx2word)}
+    word2idx = {idx2word[idx]: idx for idx, _ in enumerate(idx2word)} 
     vocab = set([word for word in word2idx])
     pickle.dump(word_count, open('data/wc.txt', 'wb'))
     pickle.dump(vocab, open('data/vocab.txt', 'wb'))
@@ -119,6 +120,7 @@ def make_pairs(word_count):
     print_message('Done Processing') 
 
 def create_sentence(vocab,sentence):
+    #This takes in a vocab and a sentence and replaces any word not in vocab with UNK. Note this suboptimal and slow. 
     output = ''
     for word in sentence.split():
         if word in vocab:
@@ -279,7 +281,7 @@ if __name__ == '__main__':
     word_count = generate_vocabulary()
     make_pairs(word_count)
     train()
-    #plotGlove()
-    #plotMSMARCO()
-    #annoyGlove()
-    #annoyMSMARCO()
+    plotGlove()
+    plotMSMARCO()
+    annoyGlove()
+    annoyMSMARCO()

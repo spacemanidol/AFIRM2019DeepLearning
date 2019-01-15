@@ -1,5 +1,10 @@
 #Data Files
-data/*
+data/collection.tsv
+data/queries.dev.tsv 
+data/queries.eval.tsv
+data/pairs.txt
+data/corpus.txt
+data/glove* 
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
