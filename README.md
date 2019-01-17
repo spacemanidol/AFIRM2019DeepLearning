@@ -1,6 +1,6 @@
 # AFRIRM Deep learning Track
 ## Overview
-On January 12 2019 Bhaskar Mitra, Nick Craswell, Emine Yilmaz, and Daniel Campos gave lectures and labs about Deep Learning for Information Retrieval and Data Mining at [AFIRM 2019](http://sigir.org/afirm2019/) by SIGIR. This repo contains the lab portion of the deep dive. 
+On January 16th,2019 Bhaskar Mitra, Nick Craswell, Emine Yilmaz, and Daniel Campos gave lectures and labs about Deep Learning for Information Retrieval and Data Mining at [AFIRM 2019](http://sigir.org/afirm2019/) by SIGIR. This repo contains the lab portion of the deep dive. 
 ### Setup
 We suggest you use conda to deal with specific enviorments but feel free to ignore.
 ```bash
